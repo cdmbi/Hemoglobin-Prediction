@@ -1,0 +1,259 @@
+---
+title: "Predicting the oxygen affinity of human haemoglobin"
+author: Saw Simeon, Chuleeporn Phanus-umporn, Nuttapat Anuwongcharoen, Virapong Prachayasittikul,
+  Jarl E. S. Wikberg, Leif Bulow and Chanin Nantasenamat
+date: "July 19, 2016"
+output: pdf_document
+---
+
+
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+library(readxl)
+data <- read_excel("data.xlsx", sheet = 1)
+Affinity <- data$Affinity
+set.seed(100)
+data <- data[-1]
+data <- data.frame(data)
+column_names <- colnames(data)
+label_names <- gsub("X", "p", column_names)
+colnames(data) <- label_names
+column_names <- colnames(data)
+label_names2 <- gsub("_scl", "z", column_names)
+colnames(data) <- label_names2
+data <- cbind(Affinity, data)
+
+```
+
+## Function for creating Decision Tree
+
+```{r, warning = FALSE, message = FALSE, error = FALSE}
+
+dt_C50_train <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- C50::C5.0(Affinity~., data = train)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- C50::C5.0(Affinity~., data = train)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- C50::C5.0(Affinity~., data = train)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 4),
+          round(sd(x, na.rm = TRUE), digits = 4))
+}
+
+results_training_C50 <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- dt_C50_train(x, model == "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if (mode = "Increased") {
+  yes <- dt_C50_train(x, model == "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- dt_C50_train(x, model == "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+  
+
+```
+
