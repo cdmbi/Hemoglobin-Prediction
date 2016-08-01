@@ -44,13 +44,20 @@ dt_C50_train <- function(x, model) {
   data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
   data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
   input <- rbind(data_Decrease, data_Increase, data_Normal)
+  rm(data)
+  rm(data_Decrease)
+  rm(data_Increase)
+  rm(data_Normal)
   index <- caret::createDataPartition(input$Affinity, p = 0.8,
                                list = FALSE)
   train <- input[index, ]
   test <- input[-index, ]
+  rm(input)
+  rm(index)
   model <- C50::C5.0(Affinity~., data = train)
   actual <- train$Affinity
   prediction <- predict(model, train, type = "class")
+  rm(model)
   result <-  caret::confusionMatrix(prediction, actual)
   result <- result$table
   result <- as.numeric(result)
@@ -289,6 +296,7 @@ dt_C50_cv <- function(x, model) {
   prediction <- myRes$prediction
   actual <- myRes$actual
   result <-  caret::confusionMatrix(prediction, actual)
+  rm(myRes)
   result <- result$table
   result <- as.numeric(result)
   ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
@@ -329,6 +337,7 @@ dt_C50_cv <- function(x, model) {
   prediction <- myRes$prediction
   actual <- myRes$actual
   result <-  caret::confusionMatrix(prediction, actual)
+  rm(myRes)
   result <- result$table
   result <- as.numeric(result)
   ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
@@ -368,6 +377,7 @@ dt_C50_cv <- function(x, model) {
   prediction <- myRes$prediction
   actual <- myRes$actual
   result <-  caret::confusionMatrix(prediction, actual)
+  rm(myRes)
   result <- result$table
   result <- as.numeric(result)
   ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
@@ -729,6 +739,37 @@ results_testing_C50 <- function(x, mode) {
 return(results_all)
 }
 
+
+```
+
+## Performance with Decision Tree
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+dt_train <- function(x) {
+  result_train <- c(results_training_C50(x, mode = "Decreased"), results_training_C50(x, mode = "Normal"), results_training_C50(x, mode = "Increased"))
+  names(result_train) <- c("Training for Decreased (Mean and SD of ACC, SENS, SPEC, MCC)", "Training for Normal (Mean and SD of ACC, SENS, SPEC, MCC)", "Testing for Increased (Mean and SD of ACC, SENS, SPEC, MCC)")
+  return(result_train)
+  
+}
+dt_cv <- function(x) {
+  result_cv <- c(results_cv_C50(x, mode = "Decreased"), results_cv_C50(x, mode = "Normal"), results_cv_C50(x, mode = "Increased"))
+  names(result_cv) <- c("CV for Decreased (Mean and SD of ACC, SENS, SPEC, MCC)", "CV for Normal (Mean and SD of ACC, SENS, SPEC, MCC)", "CV for Increased (Mean and SD of ACC, SENS, SPEC, MCC)")
+  return(result_cv)
+}
+dt_test <- function(x) {
+  result_test <- c(results_testing_C50(x, mode = "Decreased"), results_testing_C50(x, mode = "Normal"), results_testing_C50(x, mode = "Increased"))
+  names(result_test) <- c("Testing for Decreased (Mean and SD of ACC, SENS, SPEC, MCC)", "Testing for Normal (Mean and SD of ACC, SENS, SPEC, MCC)", "Testing for Increased (Mean and SD of ACC, SENS, SPEC, MCC)")
+  return(result_test)
+}
+
+
+decision_tree <- function(x) {
+  result <- c(dt_train(x), dt_cv(x), dt_test(x))
+  names(result) <- c("Training", "Cross Validation", "Testing")
+  return(result)
+}
+
+results <- decision_tree(data)
 
 ```
 
@@ -1309,6 +1350,40 @@ rf_test <- function(x, model) {
 
 
 ```
+
+
+## Performance with Decision Tree
+
+```{r, error=FALSE, message=FALSE, warning=FALSE}
+dt_train <- function(x) {
+  result_train <- c(results_training_C50(x, mode = "Decreased"), results_training_C50(x, mode = "Normal"), results_training_C50(x, mode = "Increased"))
+  names(result_train) <- c("Training for Decreased (Mean and SD of ACC, SENS, SPEC, MCC)", "Training for Normal (Mean and SD of ACC, SENS, SPEC, MCC)", "Testing for Increased (Mean and SD of ACC, SENS, SPEC, MCC)")
+  return(result_train)
+  
+}
+dt_cv <- function(x) {
+  result_cv <- c(results_cv_C50(x, mode = "Decreased"), results_cv_C50(x, mode = "Normal"), results_cv_C50(x, mode = "Increased"))
+  names(result_cv) <- c("CV for Decreased (Mean and SD of ACC, SENS, SPEC, MCC)", "CV for Normal (Mean and SD of ACC, SENS, SPEC, MCC)", "CV for Increased (Mean and SD of ACC, SENS, SPEC, MCC)")
+  return(result_cv)
+}
+dt_test <- function(x) {
+  result_test <- c(results_testing_C50(x, mode = "Decreased"), results_testing_C50(x, mode = "Normal"), results_testing_C50(x, mode = "Increased"))
+  names(result_test) <- c("Testing for Decreased (Mean and SD of ACC, SENS, SPEC, MCC)", "Testing for Normal (Mean and SD of ACC, SENS, SPEC, MCC)", "Testing for Increased (Mean and SD of ACC, SENS, SPEC, MCC)")
+  return(result_test)
+}
+
+
+decision_tree <- function(x) {
+  result <- c(dt_train(x), dt_cv(x), dt_test(x))
+  names(result) <- c("Training", "Cross Validation", "Testing")
+  return(result)
+}
+
+results <- decision_tree(data)
+
+```
+
+
 
 
 ## Function for creating artificial neural network
@@ -2025,9 +2100,6 @@ return(results_all)
 
 ```{r, warning=FALSE, message=FALSE, error=FALSE}
 
-data <- cbind(Affinity, data)
-
-
 plsda_train <- function(x, model) {
   if (model == "Decreased") {
     library(parallel)
@@ -2137,7 +2209,7 @@ mean_and_sd <- function(x) {
 
 results_training_plsda <- function(x, mode) {
   if (mode == "Decreased") {
-    yes <- ann_train(x, model = "Decreased")
+    yes <- plsda_train(x, model = "Decreased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2178,7 +2250,7 @@ results_training_plsda <- function(x, mode) {
   rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
                              "MCC_Mean", "MCC_SD")
   } else if(mode == "Increased") {
-  yes <- ann_train(x, model = "Increased")
+  yes <- plsda_train(x, model = "Increased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2220,7 +2292,7 @@ results_training_plsda <- function(x, mode) {
                              "MCC_Mean", "MCC_SD")
   
 } else if (mode == "Normal") {
-  yes <- ann_train(x, model = "Increased")
+  yes <- plsda_train(x, model = "Increased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2403,9 +2475,9 @@ plsda_cv <- function(x, model) {
   
 }
 
-results_cv_ann <- function(x, mode) {
+results_cv_plsda <- function(x, mode) {
   if (mode == "Decreased") {
-    yes <- ann_cv(x, model = "Decreased")
+    yes <- plsda_cv(x, model = "Decreased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2446,7 +2518,7 @@ results_cv_ann <- function(x, mode) {
   rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
                              "MCC_Mean", "MCC_SD")
   } else if(mode == "Increased") {
-  yes <- ann_cv(x, model = "Increased")
+  yes <- plsda_cv(x, model = "Increased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2488,7 +2560,7 @@ results_cv_ann <- function(x, mode) {
                              "MCC_Mean", "MCC_SD")
   
 } else if (mode == "Normal") {
-  yes <- ann_cv(x, model = "Increased")
+  yes <- plsda_cv(x, model = "Increased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2533,7 +2605,7 @@ results_cv_ann <- function(x, mode) {
 return(results_all)
 }
 
-ann_test <- function(x, model) {
+plsda_test <- function(x, model) {
   if (model == "Decreased") {
     library(parallel)
     library(doSNOW)
@@ -2553,9 +2625,13 @@ ann_test <- function(x, model) {
                                list = FALSE)
   train <- input[index, ]
   test <- input[-index, ]
-  model <- nnet::nnet(Affinity~., data = train)
-  actual <- test$Affinity
-  prediction <- predict(model, test, type = "class")
+  trainY <- train$Affinity
+  trainX <- train[, 2:ncol(train)]
+  testY <- test$Affinity
+  testX <- test[, 2:ncol(test)]
+  model <- caret::plsda(trainX, trainY, ncomp = 2)
+  actual <- testY
+  prediction <- predict(model, testX, type = "class")
   result <-  caret::confusionMatrix(prediction, actual)
   result <- result$table
   result <- as.numeric(result)
@@ -2581,9 +2657,13 @@ ann_test <- function(x, model) {
                                list = FALSE)
   train <- input[index, ]
   test <- input[-index, ]
-  model <- nnet::nnet(Affinity~., data = train)
-  actual <- test$Affinity
-  prediction <- predict(model, test, type = "class")
+  trainY <- train$Affinity
+  trainX <- train[, 2:ncol(train)]
+  testY <- test$Affinity
+  testX <- test[, 2:ncol(test)]
+  model <- caret::plsda(trainX, trainY, ncomp = 2)
+  actual <- testY
+  prediction <- predict(model, testX, type = "class")
   result <-  caret::confusionMatrix(prediction, actual)
   result <- result$table
   result <- as.numeric(result)
@@ -2608,9 +2688,13 @@ ann_test <- function(x, model) {
                                list = FALSE)
   train <- input[index, ]
   test <- input[-index, ]
-  model <- nnet::nnet(Affinity~., data = train)
-  actual <- test$Affinity
-  prediction <- predict(model, test, type = "class")
+  trainY <- train$Affinity
+  trainX <- train[, 2:ncol(train)]
+  testY <- test$Affinity
+  testX <- test[, 2:ncol(test)]
+  model <- caret::plsda(trainX, trainY, ncomp = 2)
+  actual <- testY
+  prediction <- predict(model, testX, type = "class")
   result <-  caret::confusionMatrix(prediction, actual)
   result <- result$table
   result <- as.numeric(result)
@@ -2623,9 +2707,9 @@ ann_test <- function(x, model) {
   
 }
 
-results_test_ann <- function(x, mode) {
+results_test_plsda <- function(x, mode) {
   if (mode == "Decreased") {
-    yes <- ann_test(x, model = "Decreased")
+    yes <- plsda_test(x, model = "Decreased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2666,7 +2750,7 @@ results_test_ann <- function(x, mode) {
   rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
                              "MCC_Mean", "MCC_SD")
   } else if(mode == "Increased") {
-  yes <- ann_test(x, model = "Increased")
+  yes <- plsda_test(x, model = "Increased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
@@ -2708,7 +2792,2842 @@ results_test_ann <- function(x, mode) {
                              "MCC_Mean", "MCC_SD")
   
 } else if (mode == "Normal") {
-  yes <- ann_test(x, model = "Increased")
+  yes <- plsda_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+
+```
+
+## Function for creating Support Vector Machine (linear kernel)
+
+```{r, error = FALSE, message = FALSE, error = FALSE}
+
+svm_train_linear <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 2),
+          round(sd(x, na.rm = TRUE), digits = 2))
+}
+
+results_training_svm_linear <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_train_linear(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_train_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_train_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_cv_linear <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "linear", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "linear", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "linear", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_cv_svm_linear <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_cv_linear(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_cv_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_cv_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_linear_test <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_test_linear_svm <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_linear_test(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_linear_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_linear_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+
+```
+
+
+## Function for creating Support Vector Machine (linear kernel)
+
+```{r, error = FALSE, message = FALSE, error = FALSE}
+
+svm_train_linear <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 2),
+          round(sd(x, na.rm = TRUE), digits = 2))
+}
+
+results_training_svm_linear <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_train_linear(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_train_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_train_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_cv_linear <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "linear", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "linear", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "linear", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_cv_svm_linear <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_cv_linear(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_cv_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_cv_linear(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_linear_test <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "linear", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_test_linear_svm <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_linear_test(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_linear_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_linear_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+
+```
+
+
+## Function for creating Support Vector Machine (radial kernel)
+
+```{r, error = FALSE, message = FALSE, error = FALSE}
+
+svm_train_radial <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "radial", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "radial", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "radial", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 2),
+          round(sd(x, na.rm = TRUE), digits = 2))
+}
+
+results_training_svm_radial <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_train_radial(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_train_radial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_train_radial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_cv_radial <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "radial", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "radial", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "radial", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_cv_svm_radial <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_cv_radial(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_cv_radial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_cv_radial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_radial_test <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "radial", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "radial", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "radial", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_test_radial_svm <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_radial_test(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_radial_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_radial_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+
+```
+
+
+## Function for creating Support Vector Machine (polynomial kernel)
+
+```{r, error = FALSE, message = FALSE, error = FALSE}
+
+svm_train_polynomial <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "polynomial", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "polynomial", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "polynomial", scale = FALSE)
+  actual <- train$Affinity
+  prediction <- predict(model, train, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+mean_and_sd <- function(x) {
+  c(round(mean(x, na.rm = TRUE), digits = 2),
+          round(sd(x, na.rm = TRUE), digits = 2))
+}
+
+results_training_svm_polynomial <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_train_polynomial(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_train_polynomial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_train_polynomial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_cv_polynomial <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "polynomial", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "polynomial", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  k = 10
+  index <- sample(1:k, nrow(train), replace = TRUE)
+  folds <- 1:k
+  myRes <- data.frame()
+  for (j in 1:k) {
+    training <- subset(train, index %in% folds[-j])
+    testing <- subset(train, index %in% c(j))
+    model_train <- e1071::svm(Affinity~., data = training, kernel = "polynomial", scale = FALSE)
+    prediction <- predict(model_train, testing)
+    actual <- testing$Affinity
+    ok <- data.frame(prediction, actual)
+    value <- rbind(myRes, ok)
+  }
+  prediction <- value$prediction
+  actual <- value$actual
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_cv_svm_polynomial <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_cv_polynomial(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_cv_polynomial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_cv_polynomial(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+}
+return(results_all)
+}
+
+svm_polynomial_test <- function(x, model) {
+  if (model == "Decreased") {
+    library(parallel)
+    library(doSNOW)
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+  data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "polynomial", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[[1]], (result[[2]] + result[[3]]), (result[[4]] + result[[7]]),
+                        (result[[5]] + result[[9]]))
+  
+    }
+  } else if (model == "Increased") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+      
+      data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "polynomial", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[5], (result[2] + result[8]), (result[4] + result[6]),
+                        result[1] + result[9]) 
+      
+    }
+  } else if (model == "Normal") {
+    cl <- makeCluster(detectCores())
+    registerDoSNOW(cl)
+    ok <- list(100)
+    ok <- foreach(i = 1:100) %dopar% {
+       data <- x
+  data_Decrease <- subset(data, Affinity == "Decreased")
+  data_Increase <- subset(data, Affinity == "Increased")
+  data_Normal <- subset(data, Affinity == "Normal")
+  data_Decrease <- dplyr::sample_n(data_Decrease, size = 59, replace = TRUE)
+  data_Increase <- dplyr::sample_n(data_Increase, size = 59, replace = TRUE)
+  data_Normal <- dplyr::sample_n(data_Normal, size = 59, replace = TRUE)
+  input <- rbind(data_Decrease, data_Increase, data_Normal)
+  index <- caret::createDataPartition(input$Affinity, times = 1, p = 0.8,
+                               list = FALSE)
+  train <- input[index, ]
+  test <- input[-index, ]
+  model <- e1071::svm(Affinity~., data = train, kernel = "polynomial", scale = FALSE)
+  actual <- test$Affinity
+  prediction <- predict(model, test, type = "class")
+  result <-  caret::confusionMatrix(prediction, actual)
+  result <- result$table
+  result <- as.numeric(result)
+  ok[[i]] <- cbind(result[9], (result[3] + result[6]), (result[4] + result[6]),
+                   (result[1] + result[5]))
+    }
+    return(ok)
+    stopCluster(cl)
+  }
+  
+}
+
+results_test_polynomial_svm <- function(x, mode) {
+  if (mode == "Decreased") {
+    yes <- svm_polynomial_test(x, model = "Decreased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  } else if(mode == "Increased") {
+  yes <- svm_polynomial_test(x, model = "Increased")
+    great <- data.frame(yes)
+    TP <- seq(from = 1, to = 400, by = 4)
+  FN <- seq(from = 2, to = 400, by = 4)
+  FP <- seq(from = 3, to = 400, by = 4)
+  TN <- seq(from = 4, to = 400, by = 4)
+  results <- mapply(c, great[TP], great[FN], great[FP], great[TN])
+  data <- data.frame(results)
+  rm(yes)
+  rm(great)
+  rm(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+
+
+    MCC[i,1]  = MCC1/MCC4
+  }
+  results_ACC <- mean_and_sd(ACC)
+  rm(ACC)
+  results_SENS <- mean_and_sd(SENS)
+  rm(SENS)
+  results_SPEC <- mean_and_sd(SPEC)
+  rm(SPEC)
+  results_MCC <- mean_and_sd(MCC)
+  rm(MCC)
+  results_all <- (data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
+  rownames(results_all) <- c("ACC_Mean", "ACC_SD", "Sens_Mean", "Sens_SD", "Spec_Mean", "Spec_SD",
+                             "MCC_Mean", "MCC_SD")
+  
+} else if (mode == "Normal") {
+  yes <- svm_polynomial_test(x, model = "Increased")
     great <- data.frame(yes)
     TP <- seq(from = 1, to = 400, by = 4)
   FN <- seq(from = 2, to = 400, by = 4)
